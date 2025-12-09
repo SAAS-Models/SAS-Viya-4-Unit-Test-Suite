@@ -1,0 +1,31 @@
+stages:
+  - precheck
+  - build
+  - deploy
+
+infra:
+  stage: precheck
+  script:
+    - ./pipeline/prechecks/infra.sh sas-viya
+
+connectivity:
+  stage: precheck
+  script:
+    - ./pipeline/prechecks/connectivity.sh
+
+lint:
+  stage: precheck
+  allow_failure: true
+  script:
+    - ./pipeline/prechecks/lint.sh
+
+pytest:
+  stage: precheck
+  script:
+    - pytest
+
+docs:
+  stage: precheck
+  allow_failure: true
+  script:
+    - ./pipeline/prechecks/docs.sh
