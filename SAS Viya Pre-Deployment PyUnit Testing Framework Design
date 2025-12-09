@@ -1,0 +1,859 @@
+# SAS Viya Pre-Deployment PyUnit Testing Framework Design
+
+## Executive Summary
+
+This document outlines a comprehensive PyUnit (unittest) testing framework design for validating infrastructure, configurations, and prerequisites before SAS Viya deployment on Kubernetes (AWS EKS). The framework follows a modular, extensible architecture that enables thorough validation while maintaining flexibility for environment-specific requirements.
+
+## 1. Framework Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Test Orchestrator                         │
+│                  (TestSuiteManager)                         │
+└────────────┬────────────────────────────────────┬───────────┘
+             │                                    │
+     ┌───────▼──────────┐                ┌───────▼──────────┐
+     │  Configuration   │                │     Reporting     │
+     │     Manager      │                │     Engine        │
+     └───────┬──────────┘                └───────┬──────────┘
+             │                                    │
+┌────────────▼────────────────────────────────────▼───────────┐
+│                      Test Executor                          │
+├──────────────────────────────────────────────────────────────┤
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐           │
+│  │   Phase 1  │  │   Phase 2  │  │   Phase 3  │  ...      │
+│  │   Tests    │  │   Tests    │  │   Tests    │           │
+│  └────────────┘  └────────────┘  └────────────┘           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## 2. Core Components
+
+### 2.1 Test Suite Manager
+**Purpose**: Orchestrates test execution across phases and manages dependencies
+
+**Responsibilities**:
+- Test discovery and loading
+- Dependency resolution
+- Phase-based execution control
+- Rollback and cleanup coordination
+- Parallel test execution management
+
+### 2.2 Configuration Manager
+**Purpose**: Centralized configuration handling for all test parameters
+
+**Responsibilities**:
+- YAML/JSON configuration parsing
+- Environment variable resolution
+- Secret management integration
+- Dynamic configuration validation
+- Multi-environment support (dev, staging, prod)
+
+### 2.3 Reporting Engine
+**Purpose**: Comprehensive test result collection and reporting
+
+**Responsibilities**:
+- Real-time test status updates
+- Multi-format report generation (HTML, JSON, JUnit XML)
+- Failure analysis and recommendations
+- Historical trending and comparison
+- Integration with monitoring systems
+
+## 3. Test Phases and Categories
+
+### Phase 1: Infrastructure Readiness
+**Execution Order**: 1
+**Criticality**: Critical (Blocking)
+
+#### 1.1 AWS Infrastructure Tests
+```python
+class AWSInfrastructureTests(unittest.TestCase):
+    """
+    Test Categories:
+    - VPC and Subnet configuration
+    - Security Groups and NACLs
+    - IAM Roles and Policies
+    - EKS Cluster availability
+    - EC2 instance types and capacity
+    - EBS volume configurations
+    - S3 bucket access and permissions
+    - Load Balancer configurations
+    """
+```
+
+#### 1.2 Network Connectivity Tests
+```python
+class NetworkTests(unittest.TestCase):
+    """
+    Test Categories:
+    - DNS resolution (internal/external)
+    - Port accessibility
+    - Firewall rules validation
+    - Proxy configurations
+    - Internet gateway connectivity
+    - VPN/Direct Connect validation
+    - Service endpoint reachability
+    """
+```
+
+#### 1.3 Storage Tests
+```python
+class StorageTests(unittest.TestCase):
+    """
+    Test Categories:
+    - NFS/EFS mount points
+    - Storage class availability
+    - PV/PVC pre-provisioning
+    - Disk space requirements
+    - IOPS and throughput validation
+    - Backup storage accessibility
+    """
+```
+
+### Phase 2: Kubernetes Platform Validation
+**Execution Order**: 2
+**Criticality**: Critical (Blocking)
+
+#### 2.1 Cluster Health Tests
+```python
+class KubernetesClusterTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Control plane component health
+    - Node readiness and capacity
+    - API server accessibility
+    - etcd cluster health
+    - CoreDNS functionality
+    - CNI plugin validation
+    - Cluster version compatibility
+    """
+```
+
+#### 2.2 RBAC and Security Tests
+```python
+class KubernetesSecurityTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Service account configurations
+    - Role and ClusterRole definitions
+    - Pod Security Policies/Standards
+    - Network Policies
+    - Secret encryption at rest
+    - Admission controller validation
+    """
+```
+
+#### 2.3 Resource Quota Tests
+```python
+class ResourceQuotaTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Namespace resource quotas
+    - CPU and memory limits
+    - Storage quotas
+    - Pod count limits
+    - Node capacity planning
+    """
+```
+
+### Phase 3: SAS Viya Prerequisites
+**Execution Order**: 3
+**Criticality**: Critical (Blocking)
+
+#### 3.1 Configuration File Tests
+```python
+class SASViyaConfigTests(unittest.TestCase):
+    """
+    Test Categories:
+    - kustomization.yaml validation
+    - Transformer configurations
+    - Site-config overlays
+    - License file validation
+    - TLS certificate validation
+    - ConfigMap/Secret templates
+    """
+```
+
+#### 3.2 User and Permission Tests
+```python
+class UserPermissionTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Local user/group creation
+    - LDAP/AD connectivity
+    - File system permissions
+    - Directory structure
+    - UID/GID consistency
+    - sudo permissions
+    """
+```
+
+#### 3.3 External Service Integration Tests
+```python
+class ExternalServiceTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Database connectivity (PostgreSQL)
+    - Message broker access (RabbitMQ)
+    - Cache service (Redis)
+    - Object storage (S3/MinIO)
+    - SMTP server configuration
+    - Logging aggregation endpoints
+    """
+```
+
+### Phase 4: Deployment Readiness
+**Execution Order**: 4
+**Criticality**: Warning (Non-blocking)
+
+#### 4.1 Image Registry Tests
+```python
+class ImageRegistryTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Registry accessibility
+    - Image pull permissions
+    - Mirror registry configuration
+    - Required images availability
+    - Image vulnerability scanning
+    """
+```
+
+#### 4.2 Monitoring and Logging Tests
+```python
+class ObservabilityTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Prometheus endpoint configuration
+    - Grafana dashboard readiness
+    - Log aggregation setup
+    - Alert manager configuration
+    - Tracing infrastructure
+    """
+```
+
+#### 4.3 Backup and Recovery Tests
+```python
+class BackupRecoveryTests(unittest.TestCase):
+    """
+    Test Categories:
+    - Backup storage accessibility
+    - Snapshot capabilities
+    - Recovery procedure validation
+    - Disaster recovery site connectivity
+    """
+```
+
+## 4. Class Design Patterns
+
+### 4.1 Base Test Class Pattern
+```python
+class SASViyaBaseTest(unittest.TestCase):
+    """
+    Base class providing common functionality:
+    - Configuration loading
+    - Logging setup
+    - Resource cleanup
+    - Retry mechanisms
+    - Common assertions
+    - Performance metrics
+    """
+    
+    @classmethod
+    def setUpClass(cls)
+    def setUp(self)
+    def tearDown(self)
+    @classmethod
+    def tearDownClass(cls)
+    
+    # Common helper methods
+    def assert_with_retry(self, callable, expected, retries=3)
+    def record_metric(self, metric_name, value)
+    def log_test_context(self, context)
+```
+
+### 4.2 Test Mixer Pattern
+```python
+class KubernetesTestMixin:
+    """Mixin providing Kubernetes-specific test utilities"""
+    def get_k8s_client(self)
+    def check_pod_status(self, namespace, selector)
+    def verify_deployment(self, name, namespace)
+
+class AWSTestMixin:
+    """Mixin providing AWS-specific test utilities"""
+    def get_boto3_client(self, service)
+    def verify_iam_role(self, role_name)
+    def check_vpc_configuration(self, vpc_id)
+
+class ConfigurationTestMixin:
+    """Mixin providing configuration validation utilities"""
+    def validate_yaml_syntax(self, file_path)
+    def check_required_keys(self, config, keys)
+    def validate_schema(self, data, schema)
+```
+
+### 4.3 Factory Pattern for Test Creation
+```python
+class TestFactory:
+    """
+    Factory for creating environment-specific tests
+    """
+    @staticmethod
+    def create_test_suite(environment: str) -> unittest.TestSuite:
+        if environment == 'aws':
+            return AWSTestSuite()
+        elif environment == 'azure':
+            return AzureTestSuite()
+        elif environment == 'onprem':
+            return OnPremTestSuite()
+```
+
+## 5. Configuration Structure
+
+### 5.1 Main Configuration Schema
+```yaml
+# test_config.yaml
+framework:
+  version: "1.0.0"
+  parallel_execution: true
+  max_workers: 4
+  continue_on_failure: false
+  report_formats: ["html", "json", "junit"]
+
+environment:
+  name: "production"
+  type: "aws"  # aws, azure, gcp, onprem
+  region: "us-east-1"
+  cluster_name: "sas-viya-eks"
+
+phases:
+  infrastructure:
+    enabled: true
+    timeout: 300
+    critical: true
+    tests:
+      - aws_infrastructure
+      - network_connectivity
+      - storage_validation
+  
+  kubernetes:
+    enabled: true
+    timeout: 600
+    critical: true
+    tests:
+      - cluster_health
+      - rbac_security
+      - resource_quotas
+  
+  sas_prerequisites:
+    enabled: true
+    timeout: 400
+    critical: true
+    tests:
+      - configuration_files
+      - user_permissions
+      - external_services
+  
+  deployment_readiness:
+    enabled: true
+    timeout: 300
+    critical: false
+    tests:
+      - image_registry
+      - monitoring_logging
+      - backup_recovery
+
+validation_rules:
+  kubernetes_version:
+    min: "1.24"
+    max: "1.28"
+  
+  node_requirements:
+    min_nodes: 3
+    min_cpu_per_node: 8
+    min_memory_gb_per_node: 32
+  
+  storage_requirements:
+    min_available_gb: 500
+    storage_classes:
+      - "sas-viya-storage"
+      - "gp3"
+```
+
+### 5.2 Test-Specific Configuration
+```yaml
+# aws_config.yaml
+aws:
+  vpc:
+    id: "vpc-xxxxx"
+    cidr: "10.0.0.0/16"
+    enable_dns: true
+    enable_dns_hostnames: true
+  
+  subnets:
+    private:
+      - id: "subnet-xxxxx"
+        az: "us-east-1a"
+        cidr: "10.0.1.0/24"
+    public:
+      - id: "subnet-yyyyy"
+        az: "us-east-1a"
+        cidr: "10.0.10.0/24"
+  
+  security_groups:
+    - id: "sg-xxxxx"
+      name: "sas-viya-sg"
+      rules:
+        - port: 443
+          protocol: "tcp"
+          source: "0.0.0.0/0"
+
+# kubernetes_config.yaml
+kubernetes:
+  namespace: "sas-viya"
+  storage_class: "gp3"
+  ingress:
+    class: "nginx"
+    host: "viya.example.com"
+  
+  resource_quotas:
+    cpu: "1000"
+    memory: "2Ti"
+    storage: "10Ti"
+```
+
+## 6. Test Execution Flow
+
+### 6.1 Sequential Execution Pattern
+```
+START
+  │
+  ├─► Load Configuration
+  │
+  ├─► Initialize Test Environment
+  │
+  ├─► Phase 1: Infrastructure
+  │     ├─► AWS Tests
+  │     ├─► Network Tests
+  │     └─► Storage Tests
+  │
+  ├─► Phase 2: Kubernetes [if Phase 1 passes]
+  │     ├─► Cluster Tests
+  │     ├─► Security Tests
+  │     └─► Resource Tests
+  │
+  ├─► Phase 3: SAS Prerequisites [if Phase 2 passes]
+  │     ├─► Config Tests
+  │     ├─► User Tests
+  │     └─► Service Tests
+  │
+  ├─► Phase 4: Deployment Readiness [optional]
+  │     ├─► Registry Tests
+  │     ├─► Monitoring Tests
+  │     └─► Backup Tests
+  │
+  ├─► Generate Reports
+  │
+  └─► END
+```
+
+### 6.2 Parallel Execution Pattern
+```
+START
+  │
+  ├─► Load Configuration
+  │
+  ├─► Initialize Test Environment
+  │
+  ├─────────────────────────────┐
+  │                             │
+  ├─► Thread Pool Executor      │
+  │     │                       │
+  │     ├─► Worker 1            │
+  │     │   └─► Test Set A      │
+  │     │                       │
+  │     ├─► Worker 2            │
+  │     │   └─► Test Set B      │
+  │     │                       │
+  │     └─► Worker N            │
+  │         └─► Test Set N      │
+  │                             │
+  ├─────────────────────────────┘
+  │
+  ├─► Aggregate Results
+  │
+  ├─► Generate Reports
+  │
+  └─► END
+```
+
+## 7. Error Handling and Recovery
+
+### 7.1 Error Categories
+```python
+class TestErrorCategory(Enum):
+    INFRASTRUCTURE = "Infrastructure not ready"
+    CONFIGURATION = "Configuration invalid"
+    PERMISSION = "Permission denied"
+    CONNECTIVITY = "Connection failed"
+    RESOURCE = "Resource unavailable"
+    TIMEOUT = "Operation timeout"
+    DEPENDENCY = "Dependency not met"
+```
+
+### 7.2 Recovery Strategies
+```python
+class RecoveryStrategy:
+    """
+    Define recovery actions for different error types
+    """
+    strategies = {
+        TestErrorCategory.CONNECTIVITY: [
+            "retry_with_exponential_backoff",
+            "check_network_configuration",
+            "verify_firewall_rules"
+        ],
+        TestErrorCategory.PERMISSION: [
+            "verify_credentials",
+            "check_iam_policies",
+            "validate_rbac_rules"
+        ],
+        TestErrorCategory.RESOURCE: [
+            "wait_for_resource",
+            "scale_cluster",
+            "provision_additional_resources"
+        ]
+    }
+```
+
+### 7.3 Rollback Mechanism
+```python
+class RollbackManager:
+    """
+    Manage rollback of test-created resources
+    """
+    def register_resource(self, resource_type, resource_id)
+    def rollback_all(self)
+    def rollback_phase(self, phase)
+```
+
+## 8. Reporting Structure
+
+### 8.1 Report Components
+```python
+class TestReport:
+    """
+    Comprehensive test report structure
+    """
+    metadata: ReportMetadata
+    summary: TestSummary
+    phase_results: List[PhaseResult]
+    detailed_results: List[TestResult]
+    recommendations: List[Recommendation]
+    metrics: PerformanceMetrics
+    artifacts: List[Artifact]
+```
+
+### 8.2 Report Formats
+
+#### HTML Report Structure
+```html
+<!-- Sections -->
+1. Executive Summary
+2. Environment Information
+3. Test Execution Timeline
+4. Phase-wise Results
+5. Detailed Test Results
+6. Failure Analysis
+7. Recommendations
+8. Performance Metrics
+9. Appendices
+```
+
+#### JSON Report Structure
+```json
+{
+  "metadata": {},
+  "summary": {
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "duration": 0
+  },
+  "phases": [],
+  "tests": [],
+  "recommendations": [],
+  "metrics": {}
+}
+```
+
+## 9. Integration Points
+
+### 9.1 CI/CD Integration
+```yaml
+# Jenkins Pipeline Integration
+pipeline {
+    stages {
+        stage('Pre-Deployment Validation') {
+            steps {
+                sh 'python -m sas_viya_test_framework --config=prod.yaml'
+            }
+        }
+    }
+}
+
+# GitLab CI Integration
+sas-viya-validation:
+  stage: validate
+  script:
+    - python -m sas_viya_test_framework --config=$ENV.yaml
+  artifacts:
+    reports:
+      junit: test-results.xml
+```
+
+### 9.2 Monitoring Integration
+```python
+class MonitoringIntegration:
+    """
+    Send test metrics to monitoring systems
+    """
+    def send_to_prometheus(self, metrics)
+    def send_to_datadog(self, metrics)
+    def send_to_cloudwatch(self, metrics)
+    def send_to_elasticsearch(self, results)
+```
+
+### 9.3 Notification Integration
+```python
+class NotificationManager:
+    """
+    Send notifications based on test results
+    """
+    def send_slack_notification(self, results)
+    def send_email_report(self, results)
+    def send_teams_notification(self, results)
+    def create_jira_ticket(self, failures)
+```
+
+## 10. Extensibility Framework
+
+### 10.1 Plugin Architecture
+```python
+class TestPlugin(ABC):
+    """
+    Base class for test plugins
+    """
+    @abstractmethod
+    def get_test_classes(self) -> List[type]
+    
+    @abstractmethod
+    def get_configuration_schema(self) -> dict
+    
+    @abstractmethod
+    def initialize(self, config: dict)
+```
+
+### 10.2 Custom Test Registration
+```python
+class TestRegistry:
+    """
+    Registry for custom test classes
+    """
+    def register_test(self, phase: str, test_class: type)
+    def register_plugin(self, plugin: TestPlugin)
+    def get_tests_for_phase(self, phase: str) -> List[type]
+```
+
+### 10.3 Hook System
+```python
+class HookManager:
+    """
+    Manage pre/post test hooks
+    """
+    def register_pre_test_hook(self, callable)
+    def register_post_test_hook(self, callable)
+    def register_pre_phase_hook(self, phase, callable)
+    def register_post_phase_hook(self, phase, callable)
+```
+
+## 11. Performance Considerations
+
+### 11.1 Test Optimization
+- **Parallel Execution**: Run independent tests concurrently
+- **Resource Pooling**: Reuse connections and clients
+- **Caching**: Cache configuration and static data
+- **Lazy Loading**: Load resources only when needed
+- **Test Prioritization**: Run critical tests first
+
+### 11.2 Performance Metrics
+```python
+class PerformanceMetrics:
+    """
+    Track test performance metrics
+    """
+    test_duration: Dict[str, float]
+    phase_duration: Dict[str, float]
+    resource_usage: Dict[str, ResourceUsage]
+    api_call_count: Dict[str, int]
+    retry_count: Dict[str, int]
+```
+
+## 12. Security Considerations
+
+### 12.1 Credential Management
+```python
+class CredentialManager:
+    """
+    Secure credential handling
+    """
+    def get_from_vault(self, key: str) -> str
+    def get_from_env(self, key: str) -> str
+    def get_from_aws_secrets_manager(self, secret_id: str) -> str
+    def get_from_kubernetes_secret(self, name: str, namespace: str) -> str
+```
+
+### 12.2 Sensitive Data Handling
+- Mask sensitive data in logs
+- Encrypt test artifacts
+- Secure communication channels
+- Audit trail for test execution
+- Role-based access control for reports
+
+## 13. Implementation Roadmap
+
+### Phase 1: Foundation (Week 1-2)
+- [ ] Set up project structure
+- [ ] Implement base test classes
+- [ ] Create configuration manager
+- [ ] Build basic reporting engine
+
+### Phase 2: Core Tests (Week 3-4)
+- [ ] Implement infrastructure tests
+- [ ] Implement Kubernetes tests
+- [ ] Implement SAS Viya prerequisite tests
+- [ ] Create test orchestrator
+
+### Phase 3: Advanced Features (Week 5-6)
+- [ ] Add parallel execution
+- [ ] Implement retry mechanisms
+- [ ] Create plugin system
+- [ ] Build CI/CD integrations
+
+### Phase 4: Polish and Documentation (Week 7-8)
+- [ ] Comprehensive testing
+- [ ] Performance optimization
+- [ ] Documentation
+- [ ] Training materials
+
+## 14. Directory Structure
+
+```
+sas-viya-test-framework/
+│
+├── framework/
+│   ├── __init__.py
+│   ├── core/
+│   │   ├── base_test.py
+│   │   ├── test_manager.py
+│   │   ├── config_manager.py
+│   │   └── reporting_engine.py
+│   │
+│   ├── phases/
+│   │   ├── __init__.py
+│   │   ├── infrastructure/
+│   │   ├── kubernetes/
+│   │   ├── sas_prerequisites/
+│   │   └── deployment_readiness/
+│   │
+│   ├── mixins/
+│   │   ├── aws_mixin.py
+│   │   ├── k8s_mixin.py
+│   │   └── config_mixin.py
+│   │
+│   ├── utils/
+│   │   ├── retry.py
+│   │   ├── validators.py
+│   │   └── helpers.py
+│   │
+│   └── plugins/
+│       └── __init__.py
+│
+├── configs/
+│   ├── default.yaml
+│   ├── aws/
+│   ├── azure/
+│   └── onprem/
+│
+├── reports/
+│   └── templates/
+│
+├── tests/
+│   ├── unit/
+│   └── integration/
+│
+├── docs/
+│   ├── user_guide.md
+│   ├── developer_guide.md
+│   └── api_reference.md
+│
+├── scripts/
+│   ├── run_tests.py
+│   └── generate_report.py
+│
+├── requirements.txt
+├── setup.py
+└── README.md
+```
+
+## 15. Success Criteria
+
+### 15.1 Framework Success Metrics
+- **Coverage**: >95% of deployment requirements validated
+- **Reliability**: <1% false positive rate
+- **Performance**: Complete validation in <30 minutes
+- **Maintainability**: New tests added in <1 hour
+- **Adoption**: Used in 100% of deployments
+
+### 15.2 Test Success Metrics
+- All critical tests pass (100%)
+- Warning tests pass (>90%)
+- No unhandled exceptions
+- All reports generated successfully
+- Rollback successful if needed
+
+## Appendices
+
+### A. Sample Test Implementation
+```python
+class TestVPCConfiguration(AWSInfrastructureTests):
+    """
+    Example test implementation
+    """
+    def test_vpc_exists(self):
+        """Verify VPC exists and is configured correctly"""
+        vpc_id = self.config['aws']['vpc']['id']
+        vpc = self.aws_client.describe_vpcs(VpcIds=[vpc_id])
+        
+        self.assertEqual(len(vpc['Vpcs']), 1)
+        self.assertEqual(vpc['Vpcs'][0]['State'], 'available')
+        self.assertTrue(vpc['Vpcs'][0]['EnableDnsHostnames'])
+        self.assertTrue(vpc['Vpcs'][0]['EnableDnsSupport'])
+```
+
+### B. Configuration Examples
+[Detailed configuration examples for different environments]
+
+### C. Troubleshooting Guide
+[Common issues and resolutions]
+
+### D. Glossary
+[Technical terms and abbreviations]
+
+---
+
+**Document Version**: 1.0.0  
+**Last Updated**: December 2024  
+**Next Review**: January 2025
